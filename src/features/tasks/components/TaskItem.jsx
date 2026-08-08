@@ -73,4 +73,16 @@ function TaskItem({ task }) {
   );
 }
 
-export default TaskItem;
+// Custom comparison function for memoization
+// Only re-render if task properties change
+function arePropsEqual(prevProps, nextProps) {
+  return (
+    prevProps.task.id === nextProps.task.id &&
+    prevProps.task.title === nextProps.task.title &&
+    prevProps.task.text === nextProps.task.text &&
+    prevProps.task.isCompleted === nextProps.task.isCompleted &&
+    JSON.stringify(prevProps.task.tags) === JSON.stringify(nextProps.task.tags)
+  );
+}
+
+export default React.memo(TaskItem, arePropsEqual);

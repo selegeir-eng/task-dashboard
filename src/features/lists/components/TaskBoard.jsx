@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PlusIcon, CheckCircleIcon, TrashIcon, TagIcon } from '@heroicons/react/24/outline';
 import TaskList from '../../tasks/components/TaskList';
@@ -34,7 +34,7 @@ function TaskBoard() {
   };
 
   // Complete all tasks in a specific list
-  const handleCompleteListTasks = (listId) => {
+  const handleCompleteListTasks = useCallback((listId) => {
     const list = taskLists.find(l => l.id === listId);
     if (!list) return;
     
@@ -46,10 +46,10 @@ function TaskBoard() {
     
     // Pass these IDs to the completeAllTasks function
     completeAllTasks(filteredTaskIds);
-  };
+  }, [taskLists, tasks, getFilteredTasks, completeAllTasks]);
 
   // Delete completed tasks in a specific list
-  const handleDeleteListCompletedTasks = (listId) => {
+  const handleDeleteListCompletedTasks = useCallback((listId) => {
     const list = taskLists.find(l => l.id === listId);
     if (!list) return;
     
@@ -63,13 +63,26 @@ function TaskBoard() {
     
     // Pass these IDs to the deleteCompletedTasks function
     deleteCompletedTasks(completedFilteredTaskIds);
-  };
+  }, [taskLists, tasks, getFilteredTasks, deleteCompletedTasks]);
 
   // Handle saving list configuration and closing the editor
   const handleSaveListConfig = (listId, updates) => {
     updateTaskList(listId, updates);
     setEditingListId(null); // Close the editor after saving
   };
+
+  // Memoize filtered tasks for all lists to avoid recalculating on every render
+  const listFilteredData = useMemo(() => {
+    return taskLists.reduce((acc, list) => {
+      const filteredTasks = getFilteredTasks(list.filters, tasks);
+      acc[list.id] = {
+        filteredTasks,
+        completedTasksCount: filteredTasks.filter(task => task.isCompleted).length,
+        allTasksCompleted: filteredTasks.length > 0 && filteredTasks.every(task => task.isCompleted),
+      };
+      return acc;
+    }, {});
+  }, [taskLists, tasks, getFilteredTasks]);
 
   return (
     <div className="task-board" data-testid="task-board">
@@ -112,10 +125,8 @@ function TaskBoard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[repeat(auto-fill,minmax(20rem,1fr))] gap-4" data-testid="task-lists-container">
         {taskLists.map(list => {
-          const filteredTasks = getFilteredTasks(list.filters, tasks);
-          const completedTasksCount = filteredTasks.filter(task => task.isCompleted).length;
+          const { filteredTasks, completedTasksCount, allTasksCompleted } = listFilteredData[list.id] || { filteredTasks: [], completedTasksCount: 0, allTasksCompleted: false };
           const hasCompletedTasks = completedTasksCount > 0;
-          const allTasksCompleted = filteredTasks.length > 0 && filteredTasks.every(task => task.isCompleted);
           
           return (
             <div 
